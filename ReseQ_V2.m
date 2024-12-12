@@ -65,14 +65,13 @@ end
 
 %% Initial conditions
 for m = 1:modules
-    eta_0{m}  = [0,(m-1)*(-a-b),0]';    %Initial orientation and position [g0, x0, y0]'
-    etad_0{m} = [0,0,0]';               %Initial angular and linear velocity [gd0, xd0, yd0]'
+    eta{m}   = nan(3,length(t)); 
+    etad{m}  = nan(3,length(t));
 
-    eta{m}   = nan(3,length(t)); eta{m}(:,1)  = eta_0{m};
-    etad{m}  = nan(3,length(t)); etad{m}(:,1) = etad_0{m};
+    eta{m}(:,1)  = [0,(m-1)*(-a-b),0]'; %Initial orientation and position [g0, x0, y0]'
+    etad{m}(:,1) = [0,0,0]';            %Initial angular and linear velocity [gd0, xd0, yd0]'
 end
 
-% figure(1)
 % plotModuleHead([eta_0{1}(2:3)',0]',eta_0{1}(1),l,w,a);
 % for m= 2:modules-1
 %     plotModuleMiddle([eta_0{m}(2:3)',0]',eta_0{m}(1),l,w,a,b);
@@ -86,27 +85,20 @@ end
 %% Simulation
 
 for i = 1:length(t)-1
-    omega{1}(:,i) = [(V{1}(1,i)-W{1}(3,i)*w/2)/r;
-                     (V{1}(1,i)+W{1}(3,i)*w/2)/r];
 
     for m = 2:modules
         th{m-1} = eta{m-1}(1,i)-eta{m}(1,i);
    
         V{m}(1,i) = V{m-1}(1,i)*cos(th{m-1}) + a*W{m-1}(3,i)*sin(th{m-1});
         W{m}(3,i) = (V{m-1}(1,i)*sin(th{m-1}) - a*W{m-1}(3,i)*cos(th{m-1}))/b;
-    
-        omega{m}(:,i) = [(V{m}(1,i)-W{m}(3,i)*w/2)/r;
-                         (V{m}(1,i)+W{m}(3,i)*w/2)/r];
     end
     
     for m = 1:modules
         etad{m}(1,i) = W{m}(3,i);
-
         eta{m}(1,i+1) = eta{m}(1,i) + dt*etad{m}(1,i);
 
         vs{m} = Rotz(eta{m}(1,i))*V{m}(:,i);
         etad{m}(2:3,i) = vs{m}(1:2);
-
         eta{m}(2:3,i+1) = eta{m}(2:3,i) + dt*etad{m}(2:3,i);
     end
 end

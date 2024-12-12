@@ -48,7 +48,7 @@ while(1)
                     w1 = [zeros(1,N), linspace(0,w1_max,N), w1_max*ones(1,N/2), linspace(w1_max,0,N), zeros(1,N), linspace(0,-w1_max,N), -w1_max*ones(1,N/2), linspace(-w1_max,0,N), zeros(1,N)];
                 case "U-curve"
                     v1_max = 0.5;
-                    rc_max = 0.50;
+                    rc_max = 0.5;
                     w1_max = v1_max/rc_max;
                     v1 = v1_max*ones(1,3*N);
                     w1 = [zeros(1,N), w1_max*ones(1,N), zeros(1,N)];
@@ -81,11 +81,11 @@ while(1)
             %% Initial conditions
             
             for m = 1:modules
-                eta_0{m}  = [0,(m-1)*(-a-b),0]';    %Initial orientation and position [g0, x0, y0]'
-                etad_0{m} = [0,0,0]';               %Initial angular and linear velocity [gd0, xd0, yd0]'
-    
-                eta{m}   = nan(3,length(t)); eta{m}(:,1)  = eta_0{m};
-                etad{m}  = nan(3,length(t)); etad{m}(:,1) = etad_0{m};
+                eta{m}   = nan(3,length(t)); 
+                etad{m}  = nan(3,length(t));
+                
+                eta{m}(:,1)  = [0,(m-1)*(-a-b),0]'; %Initial orientation and position [g0, x0, y0]'
+                etad{m}(:,1) = [0,0,0]';            %Initial angular and linear velocity [gd0, xd0, yd0]'
     
                 omega{m} = nan(2,length(t)); %Angular velocities of the equivalent wheels [left;right]
             end
@@ -108,12 +108,10 @@ while(1)
                 
                 for m = 1:modules
                     etad{m}(1,i) = W{m}(3,i);
-            
                     eta{m}(1,i+1) = eta{m}(1,i) + dt*etad{m}(1,i);
             
                     vs{m} = Rotz(eta{m}(1,i))*V{m}(:,i);
                     etad{m}(2:3,i) = vs{m}(1:2);
-            
                     eta{m}(2:3,i+1) = eta{m}(2:3,i) + dt*etad{m}(2:3,i);
                 end
             end
