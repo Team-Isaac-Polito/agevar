@@ -20,18 +20,13 @@ w_max = 0.2046;                 % Total width of the robot [m]
 % theta_max = rad2deg(atan((b-l/2)/(w_max/2))+asin((a-l/2)/sqrt((w_max/2)^2+(b-l/2)^2)))
 theta_max = 50;                 % Maximum joint angle [degrees]
 
-modules=4;
+modules=3;
 
 %% Simulation parameters
 N = 1000;                       % Number of time steps
 ts = 10;                        % Total simulation time [s]
 t = linspace(0, ts, N);
 dt = t(2) - t(1);
-
-%% Input commands: [straight, rotate, straight]
-% Phase 1: Move straight (0-3s)
-% Phase 2: Rotate around rear joint (3-7s) 
-% Phase 3: Move straight again (7-10s)
 
 v_forward = 0.2;                % Forward velocity [m/s]
 w_rotation = 0.5;               % Angular velocity for rotation [rad/s]
@@ -41,33 +36,26 @@ v_x = zeros(1, N);
 w_z = zeros(1, N);
 
 % Time indices for phases
-phase1_end = round(0.1 * N);
-phase2_end = round(0.4 * N);
-phase3_end = round(0.5 * N); 
-phase4_end = round(0.8 * N);
-phase5_end = N;
+phase1_end = round(0.3 * N);
+phase2_end = round(0.6 * N);
+phase3_end = N;
 
 % Phase 1: Straight motion
 v_x(1:phase1_end) = v_forward;
 w_z(1:phase1_end) = 0;
 
-% Phase 2: Rotation around rear joint
-v_x(phase1_end+1:phase2_end) = 0;
+% Phase 2: Rotation around rear joint + forward motion
+v_x(phase1_end+1:phase2_end) = v_forward * 0.5;  % Reduced linear velocity during pivot
 w_z(phase1_end+1:phase2_end) = w_rotation;
 
 % Phase 3: Straight motion again
 v_x(phase2_end+1:phase3_end) = v_forward;
 w_z(phase2_end+1:phase3_end) = 0;
 
-% Phase 4: Rotation around rear joint
-v_x(phase3_end+1:phase4_end) = 0;
-w_z(phase3_end+1:phase4_end) = w_rotation;
+fprintf('%d-module iterative coupling: straight -> first pivots+moves (others calculated iteratively) -> all straight\n', modules);
 
-% Phase 5: Straight motion again
-v_x(phase4_end+1:phase5_end) = v_forward;
-w_z(phase4_end+1:phase5_end) = 0;
-
-fprintf('%d-module joint rotation test: all straight -> first rotates (others stay) -> all straight\n', modules);
+% Add debug output every 100 steps during pivot
+debug_output = true;
 
 %% Initialize arrays
 
@@ -103,18 +91,27 @@ for i = 1:N-1
     
     % Update first module
     if w_z(i) == 0
-        % STRAIGHT MOTION: Normal differential drive kinematics
-        eta{1}(3,i+1) = eta{1}(3,i) + dt * w_z(i);
-        eta{1}(1,i+1) = eta{1}(1,i) + dt * v_x(i) * cos(eta{1}(3,i));
-        eta{1}(2,i+1) = eta{1}(2,i) + dt * v_x(i) * sin(eta{1}(3,i));
+        % STRAIGHT MOTION: Use same integration method as other modules for consistency
+        eta{1}(3,i+1) = eta{1}(3,i) + dt * w_z(i);  % Update orientation first
+        
+        % Transform body velocity to world frame
+        v_world_x = v_x(i) * cos(eta{1}(3,i));
+        v_world_y = v_x(i) * sin(eta{1}(3,i));
+        
+        eta{1}(1,i+1) = eta{1}(1,i) + dt * v_world_x;
+        eta{1}(2,i+1) = eta{1}(2,i) + dt * v_world_y;
         yaw{1}(1,i+1) = eta{1}(1,i+1) - b * cos(eta{1}(3,i+1));
         yaw{1}(2,i+1) = eta{1}(2,i+1) - b * sin(eta{1}(3,i+1));
     else
-        % ROTATION AROUND REAR JOINT
-        yaw{1}(:,i+1) = yaw{1}(:,i);
+        % ROTATION AROUND REAR JOINT + FORWARD MOTION OF THE JOINT
+        % First, move the rear joint forward
+        yaw{1}(1,i+1) = yaw{1}(1,i) + dt * v_x(i);  % Joint moves forward
+        yaw{1}(2,i+1) = yaw{1}(2,i);  % Joint stays at same Y
+        
+        % Then, rotate the module around the moved joint
         eta{1}(3,i+1) = eta{1}(3,i) + dt * w_z(i);
-        eta{1}(1,i+1) = yaw{1}(1,i) + b * cos(eta{1}(3,i+1));
-        eta{1}(2,i+1) = yaw{1}(2,i) + b * sin(eta{1}(3,i+1));
+        eta{1}(1,i+1) = yaw{1}(1,i+1) + b * cos(eta{1}(3,i+1));
+        eta{1}(2,i+1) = yaw{1}(2,i+1) + b * sin(eta{1}(3,i+1));
     end
     
     % FOLLOWING MODULES: Each follows the previous one
@@ -123,10 +120,12 @@ for i = 1:N-1
         prev_w = module_vel(2, m-1);  % Previous module angular velocity
         
         if w_z(i) == 0  % During straight motion phases, all modules follow
-            % Calculate kinematic coupling with previous module
-            th_joint = eta{m-1}(3,i) - eta{m}(3,i);  % Relative angle
+            % Calculate kinematic coupling with previous module using original equations
+            th_joint = eta{m-1}(3,i) - eta{m}(3,i);  % Joint angle (orientation difference)
             
-            % Kinematic coupling equations
+            % Original kinematic coupling equations:
+            % V{m}(1,i) = V{m-1}(1,i)*cos(th{m-1}(i)) + a*W{m-1}(3,i)*sin(th{m-1}(i));
+            % W{m}(3,i) = (V{m-1}(1,i)*sin(th{m-1}(i)) - a*W{m-1}(3,i)*cos(th{m-1}(i)))/b;
             v_follow = prev_v * cos(th_joint) + a * prev_w * sin(th_joint);
             w_follow = (prev_v * sin(th_joint) - a * prev_w * cos(th_joint)) / b;
             
@@ -134,18 +133,83 @@ for i = 1:N-1
             module_vel(1,m) = v_follow;
             module_vel(2,m) = w_follow;
             
-            % Update module state
-            eta{m}(3,i+1) = eta{m}(3,i) + dt * w_follow;
-            eta{m}(1,i+1) = eta{m}(1,i) + dt * v_follow * cos(eta{m}(3,i));
-            eta{m}(2,i+1) = eta{m}(2,i) + dt * v_follow * sin(eta{m}(3,i));
+            % Update module state using the same integration method as original
+            eta{m}(3,i+1) = eta{m}(3,i) + dt * w_follow;  % Update orientation first
+            
+            % Transform body velocities to world frame (like original vs = Rotz * V)
+            v_world_x = v_follow * cos(eta{m}(3,i));
+            v_world_y = v_follow * sin(eta{m}(3,i));
+            
+            eta{m}(1,i+1) = eta{m}(1,i) + dt * v_world_x;
+            eta{m}(2,i+1) = eta{m}(2,i) + dt * v_world_y;
             yaw{m}(1,i+1) = eta{m}(1,i+1) - b * cos(eta{m}(3,i+1));
             yaw{m}(2,i+1) = eta{m}(2,i+1) - b * sin(eta{m}(3,i+1));
         else
-            % Stay still during rotation phases of first module
-            module_vel(1,m) = 0;
-            module_vel(2,m) = 0;
-            eta{m}(:,i+1) = eta{m}(:,i);
-            yaw{m}(:,i+1) = yaw{m}(:,i);
+            % During pivot phases: iterative calculation based on previous module's state
+            % Consider both linear velocity and rotational contribution of previous module
+            
+            if m == 2  % Second module follows the rear joint of first module
+                % For the second module, we need to follow the rear joint velocity of the first module
+                % The rear joint moves due to:
+                % 1. Direct forward movement: v_x
+                % 2. Rotational movement due to module rotation around the joint
+                
+                % Calculate the velocity of the rear joint of the first module
+                % Joint moves forward with v_x, but also moves due to rotation
+                v_joint_x = v_x(i);  % Direct forward movement of joint
+                v_joint_y = 0;       % Joint doesn't move in Y during this simple pivot
+                
+                % But we also need to consider that as the module rotates around the joint,
+                % the joint effectively moves in a way that creates the proper coupling
+                % For proper coupling, the second module should match the velocity component
+                % that maintains the connection constraint
+                
+                target_v_x_global = v_joint_x;
+                target_v_y_global = v_joint_y;
+            else
+                % For modules beyond the second, use front connection point velocity
+                % Previous module's center velocity in global frame
+                prev_v_center_x = prev_v * cos(eta{m-1}(3,i));
+                prev_v_center_y = prev_v * sin(eta{m-1}(3,i));
+                
+                % Add rotational contribution: velocity of front connection point of previous module
+                % The front connection point is at distance 'a' from the center
+                % Rotational velocity contribution: v_rot = w × r (cross product)
+                prev_w_rot_contrib_x = -prev_w * a * sin(eta{m-1}(3,i));  % -w*r*sin(theta)
+                prev_w_rot_contrib_y = prev_w * a * cos(eta{m-1}(3,i));   % w*r*cos(theta)
+                
+                % Total velocity of the front connection point of previous module
+                target_v_x_global = prev_v_center_x + prev_w_rot_contrib_x;
+                target_v_y_global = prev_v_center_y + prev_w_rot_contrib_y;
+            end
+            
+            % Calculate required velocity for this module to achieve target X-component
+            if abs(cos(eta{m}(3,i))) > 1e-6  % Avoid division by zero
+                v_required = target_v_x_global / cos(eta{m}(3,i));
+            else
+                v_required = 0;  % Module is perpendicular to X-axis
+            end
+            
+            % Limit velocity to reasonable bounds
+            v_max = v_forward * 2.0;  % Maximum allowed velocity
+            v_required = max(-v_max, min(v_max, v_required));
+            
+            % Store velocities for this module (straight motion only during pivot)
+            module_vel(1,m) = v_required;
+            module_vel(2,m) = 0;  % No rotation during pivot phase
+            
+            % Debug output every 100 steps
+            if debug_output && mod(i,100) == 0 && w_z(i) ~= 0
+                fprintf('Step %d: M%d angle=%.1f°, prev_v=%.3f, prev_w=%.3f, front_vx=%.3f, req_v=%.3f\n', ...
+                    i, m, rad2deg(eta{m}(3,i)), prev_v, prev_w, target_v_x_global, v_required);
+            end
+            
+            % Update module state (straight motion)
+            eta{m}(3,i+1) = eta{m}(3,i);  % No rotation
+            eta{m}(1,i+1) = eta{m}(1,i) + dt * v_required * cos(eta{m}(3,i));
+            eta{m}(2,i+1) = eta{m}(2,i) + dt * v_required * sin(eta{m}(3,i));
+            yaw{m}(1,i+1) = eta{m}(1,i+1) - b * cos(eta{m}(3,i+1));
+            yaw{m}(2,i+1) = eta{m}(2,i+1) - b * sin(eta{m}(3,i+1));
         end
     end
 end
@@ -169,24 +233,39 @@ for i = 1:20:N
     for m = 1:modules
         color = colors{mod(m-1, length(colors)) + 1};
         plotSimpleModule(eta{m}(:,i), l, w_e, color);
+        
+        % Plot rear joint (yaw)
         plot(yaw{m}(1,i), yaw{m}(2,i), [color 'o'], 'MarkerSize', 8, 'LineWidth', 2);
+        
+        % Plot front connection point (at distance 'a' from module center)
+        front_x = eta{m}(1,i) + a * cos(eta{m}(3,i));
+        front_y = eta{m}(2,i) + a * sin(eta{m}(3,i));
+        plot(front_x, front_y, [color 's'], 'MarkerSize', 6, 'LineWidth', 2);
+        
+        % Draw line from module center to front connection (distance 'a')
+        plot([eta{m}(1,i), front_x], [eta{m}(2,i), front_y], [color ':'], 'LineWidth', 1.5);
+        
+        % Draw line from module center to rear joint (distance 'b')  
+        plot([eta{m}(1,i), yaw{m}(1,i)], [eta{m}(2,i), yaw{m}(2,i)], [color '-'], 'LineWidth', 2);
     end
     
-    % Draw connections between modules (through joints)
-    for m = 1:modules-1
-        plot([eta{m}(1,i), yaw{m}(1,i)], [eta{m}(2,i), yaw{m}(2,i)], 'k-', 'LineWidth', 2);
-        plot([yaw{m}(1,i), eta{m+1}(1,i)], [yaw{m}(2,i), eta{m+1}(2,i)], 'k-', 'LineWidth', 2);
-    end
-    % Last module connection to its own joint
-    if modules > 0
-        plot([eta{modules}(1,i), yaw{modules}(1,i)], [eta{modules}(2,i), yaw{modules}(2,i)], 'k-', 'LineWidth', 2);
-    end
+    % No inter-module connection lines - just showing individual module geometry
     
     grid on;
     axis equal;
     title(sprintf('t = %.1f s, %d-Module System', t(i), modules));
     xlabel('X [m]');
     ylabel('Y [m]');
+    
+    % Add legend for visualization elements
+    legend_elements = {};
+    if modules > 0
+        legend_elements{end+1} = 'Module body';
+        legend_elements{end+1} = 'Rear joint (o)';
+        legend_elements{end+1} = 'Front connection (□)';
+        legend_elements{end+1} = 'Distance a (:)';
+        legend_elements{end+1} = 'Distance b (-)';
+    end
     
     drawnow;
     pause(0.1);
