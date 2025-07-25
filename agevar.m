@@ -10,8 +10,8 @@ clc
 % For demo/loop version, check the 'demo-loop' branch
 
 %% Configuration - Edit these parameters
-modules = 10;                    % Number of modules [2, 4, 6]
-trajectory_id = 1;              % 1=Simple case, 2=Simple case smooth_w, 3=S-curve, 4=U-curve, 5=<3 shape
+modules = 4;                    % Number of modules [2, 4, 6]
+trajectory_id = 3;              % 1=Simple case, 2=Simple case smooth_w, 3=S-curve, 4=U-curve, 5=<3 shape
 
 %% Robot geometric parameters
 WheelSpan = 0.210;              % Distance between wheels [m]
@@ -175,10 +175,15 @@ clf;
 
 % Initialize subplots
 subplot(2,2,1);
-plot(eta{1}(2,:), eta{1}(3,:), '--k', "LineWidth", 0.75);
+% Plot trajectories for all modules
+colors = lines(modules);  % Generate distinct colors for each module
+hold on;
+for m = 1:modules
+    plot(eta{m}(2,:), eta{m}(3,:), '--', 'Color', colors(m,:), "LineWidth", 0.75, ...
+         'DisplayName', sprintf('Module %d', m));
+end
 grid on;
 axis equal;
-hold on;
 title(sprintf('%s - %d Modules', current_trajectory, modules));
 xlabel('X [m]');
 ylabel('Y [m]');
@@ -256,9 +261,12 @@ for ii = 1:animation_steps:length(t)
     % Update robot visualization in main plot
     subplot(2,2,1);
     cla;
-    % Plot trajectory
-    plot(eta{1}(2,:), eta{1}(3,:), '--k', "LineWidth", 0.75);
+    % Plot trajectories for all modules
+    colors = lines(modules);  % Generate same colors as initialization
     hold on;
+    for m = 1:modules
+        plot(eta{m}(2,:), eta{m}(3,:), '--', 'Color', colors(m,:), "LineWidth", 0.75);
+    end
     
     % Plot robot modules
     plotModuleHead([eta{1}(2:3,ii)', 0]', eta{1}(1,ii), l, w_max, a);
