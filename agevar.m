@@ -2,10 +2,12 @@ clear
 close all
 clc
 
-%% Multi-Module Robot Kinematics Simulation
-% Single run version of LoopV2.m - for testing and development
+%% AGEVAR - Multi-Module Robot Kinematics Simulation
+% Main simulation file for development and testing
 % This script simulates the kinematics of a multi-module articulated robot
 % Each module has differential drive wheels and is connected via passive joints
+%
+% For demo/loop version, check the 'demo-loop' branch
 
 %% Configuration - Edit these parameters
 modules = 10;                    % Number of modules [2, 4, 6]
