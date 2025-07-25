@@ -177,13 +177,21 @@ while(1)
             
             % Initialize subplots
             subplot(2,2,1);
-            plot(eta{1}(2,:), eta{1}(3,:), '--k', "LineWidth", 0.75);
+            % Plot trajectories for all modules
+            colors = lines(modules);  % Generate distinct colors for each module
+            hold on;
+            for m = 1:modules
+                plot(eta{m}(2,:), eta{m}(3,:), '--', 'Color', colors(m,:), "LineWidth", 0.75, ...
+                     'DisplayName', sprintf('Module %d', m));
+            end
             grid on;
             axis equal;
-            hold on;
             title(sprintf('%s - %d Modules', current_trajectory, modules));
             xlabel('X [m]');
             ylabel('Y [m]');
+            if modules > 1
+                legend('Location', 'best');
+            end
     
             if modules > 1
                 subplot(2,2,2);
@@ -258,9 +266,12 @@ while(1)
                 % Update robot visualization in main plot
                 subplot(2,2,1);
                 cla;
-                % Plot trajectory
-                plot(eta{1}(2,:), eta{1}(3,:), '--k', "LineWidth", 0.75);
+                % Plot trajectories for all modules
+                colors = lines(modules);  % Generate same colors as initialization
                 hold on;
+                for m = 1:modules
+                    plot(eta{m}(2,:), eta{m}(3,:), '--', 'Color', colors(m,:), "LineWidth", 0.75);
+                end
                 
                 % Plot robot modules
                 plotModuleHead([eta{1}(2:3,ii)', 0]', eta{1}(1,ii), l, w_max, a);
