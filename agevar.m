@@ -238,6 +238,11 @@ xline_handle_224 = xline(t(1), 'k', "LineWidth", 1.5);
 
 % Dynamic animation loop
 animation_steps = round(length(t)/50);
+
+% % Initialize GIF creation
+% gif_filename = 'ReseQ.gif';
+% gif_delay = 0.1; % Delay between frames in seconds
+
 for ii = 1:animation_steps:length(t)
     % Update time indicators on plots
     if modules > 1
@@ -283,7 +288,20 @@ for ii = 1:animation_steps:length(t)
     xlabel('X [m]');
     ylabel('Y [m]');
     drawnow;
+    
+%     % Capture frame for GIF
+%     frame = getframe(gcf);
+%     img = frame2im(frame);
+%     [imind, cm] = rgb2ind(img, 256);
+%     
+%     if ii == 1
+%         imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', gif_delay);
+%     else
+%         imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', gif_delay);
+%     end
 end
+
+fprintf('GIF saved as: %s\n', gif_filename);
 
 %% Utility Functions
 
