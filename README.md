@@ -1,71 +1,27 @@
 # AGEVAR - Multi-Module Robot Kinematics Simulation
 
-This repository contains the kinematics simulation for a multi-module articulated robot.
+## Slip-Control Branch
 
-## Repository Structure
+**File**: `agevar.m`
 
-### Main Branch (`main`)
+**Purpose**: Advanced slip control and constraint-based positioning algorithms.
 
-- **File**: `agevar.m`
-- **Purpose**: Development and testing version
-- **Features**: Single simulation run, configurable parameters at the top
-- **Usage**: Ideal for development, testing new features, and academic work
+**Features**: 
+- Sequential pivot maneuvers with constraint-based control
+- Constraint satisfaction for inter-module connections
+- Real-time constraint error monitoring and debugging
+- Advanced kinematics for complex multi-module coordination
 
-### Demo Branch (`demo-loop`)
+**Technical Details**: 
+- Constraint-based positioning for pivoting modules
+- Geometric constraint satisfaction between module connections
+- Velocity coordination maintaining realistic forward movement
+- Debug output for constraint errors and velocities
 
-- **File**: `agevar.m`
-- **Purpose**: Continuous demo version for fairs and presentations
-- **Features**: Infinite loop through all trajectories and module configurations
-- **Usage**: Perfect for demonstrations, fairs, and continuous displays
+## Other Branches
 
-## How to Use
+- **main**: Development and testing version with trajectory simulation
+- **demo-loop**: Continuous demo version for presentations
+- **pivot**: Basic sequential pivot maneuver simulation
 
-### For Development Work
-
-```bash
-git checkout main
-# Edit parameters in agevar.m:
-# modules = 2;           % Number of modules [2, 4, 6]
-# trajectory_id = 1;     % 1-5 for different trajectories
-```
-
-### For Demonstrations
-
-```bash
-git checkout demo-loop
-# Run agevar.m - it will loop continuously through all configurations
-```
-
-### Pulling Updates
-
-To pull updates from main branch to demo-loop branch:
-
-```bash
-git checkout demo-loop
-git merge main
-```
-
-## Robot Parameters
-
-- **WheelSpan**: 0.210 m - Distance between wheels
-- **Radius**: 0.0605 m - Wheel radius
-- **Module Length**: ~0.331 m - Total module length
-- **Connection distances**: a=0.2015 m, b=0.209 m
-
-## Trajectories Available
-
-1. **Simple case**: Constant velocity circular arc
-2. **Simple case smooth_w**: Smooth angular velocity ramp
-3. **S-curve**: S-shaped path with alternating turns
-4. **U-curve**: U-turn maneuver
-5. **<3 shape**: Heart-shaped trajectory
-
-## Module Configurations
-
-- 2 modules: Basic articulated robot
-- 4 modules: Extended articulated robot
-- 6 modules: Extreme-length articulated robot
-
-## Example
-
-![ReseQ gif](ReseQ.gif)
+![Robot Simulation](ReseQ.gif)
