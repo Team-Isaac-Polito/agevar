@@ -189,9 +189,6 @@ while(1)
             title(sprintf('%s - %d Modules', current_trajectory, modules));
             xlabel('X [m]');
             ylabel('Y [m]');
-            if modules > 1
-                legend('Location', 'best');
-            end
     
             if modules > 1
                 subplot(2,2,2);
