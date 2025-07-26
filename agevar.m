@@ -10,8 +10,8 @@ clc
 % For demo/loop version, check the 'demo-loop' branch
 
 %% Configuration - Edit these parameters
-modules = 6;                    % Number of modules [2, 4, 6]
-trajectory_id = 5;              % 1=Simple case, 2=Simple case smooth_w, 3=S-curve, 4=U-curve, 5=<3 shape
+modules = 4;                    % Number of modules [2, 4, 6]
+trajectory_id = 3;              % 1=Simple case, 2=Simple case smooth_w, 3=S-curve, 4=U-curve, 5=<3 shape
 
 %% Robot geometric parameters
 WheelSpan = 0.210;              % Distance between wheels [m]
